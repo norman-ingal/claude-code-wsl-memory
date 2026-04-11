@@ -1,127 +1,218 @@
 # Claude Code Shared Memory — Windows + WSL
 
-Fix for Claude Code on Windows not sharing memory with Claude Code running in WSL (Ubuntu).
+> **Who this is for:** Developers using Claude Code on **Windows** who also run Claude Code inside **WSL** (Ubuntu or any distro) — and want both instances to share the same memory and context.
+>
+> **macOS / Linux users:** You don't have this problem. Claude Code runs natively and memory is stored in one place.
+
+---
 
 ## The Problem
 
-When you open a project via `//wsl.localhost/Ubuntu-24.04/...` in the Windows Claude Code app, it generates a different project hash than when you open the same project from inside WSL. This means:
+Claude Code builds up memory about your projects — your preferences, decisions, architecture, things you've told it to remember. This memory makes every session smarter than the last.
 
-- **WSL Claude Code** stores memory under `~/.claude/projects/-home-<user>-<project>/`
-- **Windows Claude Code** stores memory under `~/.claude/projects/--wsl-localhost-Ubuntu-24-04-home-<user>-<project>/`
+But on Windows + WSL, you effectively have **two isolated Claude instances** that never talk to each other:
 
-On top of that, the Windows app stores its `.claude` directory under `C:\Users\<winuser>\.claude`, completely separate from WSL's `~/.claude`.
+| Instance | Memory location |
+|---|---|
+| Windows app (opening `\\wsl.localhost\Ubuntu-24.04\...`) | `C:\Users\<winuser>\.claude\projects\--wsl-localhost-Ubuntu-24-04-home-<user>-<project>\` |
+| WSL CLI (`claude` in terminal) | `~/.claude/projects/-home-<user>-<project>\` |
 
-Result: two isolated Claude instances that never share context or memory.
+Different hashes, different directories, different memory. Whatever the Windows app learns, the WSL CLI doesn't know — and vice versa.
 
-## The Fix
+**After this fix:** both instances read and write the same memory files. Context built in one is immediately available in the other.
 
-Two steps:
-
-1. **Symlink** `C:\Users\<winuser>\.claude` → WSL's `~/.claude` so both apps use the same config directory
-2. **Bind mount** the WSL project's memory folder onto the Windows project hash folder so both hashes read the same memory files
-
-## Prerequisites
-
-- Windows 11 with WSL2 (Ubuntu 24.04 or any distro)
-- Claude Code installed on both Windows and WSL
-- Admin PowerShell access
-- Your WSL username and Windows username (may differ)
-
-## Setup
-
-### Step 1 — Run the WSL setup script
-
-In your WSL terminal:
-
-```bash
-bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
-```
-
-Example (Ubuntu 24.04, the default):
-
-```bash
-bash setup.sh wsluser winuser MyProject
-```
-
-Example (different distro):
-
-```bash
-bash setup.sh wsluser winuser MyProject Ubuntu-22.04
-```
-
-The distro name must exactly match what appears in `wsl --list` — it determines the Windows project hash. Defaults to `Ubuntu-24.04` if omitted.
-
-This will:
-- Create the Windows project hash directory in WSL
-- Bind mount the memory folder
-- Add the bind mount to `/etc/fstab` for persistence
-
-### Step 2 — Symlink Windows `.claude` to WSL (Admin PowerShell)
-
-```powershell
-Rename-Item "C:\Users\<winuser>\.claude" "C:\Users\<winuser>\.claude.bak"
-New-Item -ItemType SymbolicLink -Path "C:\Users\<winuser>\.claude" -Target "\\wsl.localhost\Ubuntu-24.04\home\<wsluser>\.claude"
-```
-
-Example:
-
-```powershell
-Rename-Item "C:\Users\winuser\.claude" "C:\Users\winuser\.claude.bak"
-New-Item -ItemType SymbolicLink -Path "C:\Users\winuser\.claude" -Target "\\wsl.localhost\Ubuntu-24.04\home\wsluser\.claude"
-```
-
-### Step 3 — Restart Windows Claude Code
-
-Reopen the Windows Claude Code app. Both instances now share the same memory.
-
-## If Memory Stops Working After WSL Restart
-
-The bind mount may not have reapplied. Run:
-
-```bash
-sudo mount -a
-```
+---
 
 ## How It Works
 
 ```
 Windows Claude Code
-  └── C:\Users\winuser\.claude          (symlink)
+  └── C:\Users\winuser\.claude          ← symlink
         └── \\wsl.localhost\...\home\wsluser\.claude   (WSL filesystem)
               └── projects/
-                    ├── -home-wsluser-MyProject/          (WSL hash)
-                    │     └── memory/  ← canonical
-                    └── --wsl-localhost-...-MyProject/    (Windows hash)
+                    ├── -home-wsluser-MyProject/     ← WSL hash (canonical)
+                    │     └── memory/  ← one source of truth
+                    └── --wsl-localhost-...-MyProject/  ← Windows hash
                           └── memory/  ← bind mounted from above
 ```
 
-Both project hashes point to the same memory files. Writes from either app are immediately visible to the other.
+Two steps:
+1. **Symlink** `C:\Users\<winuser>\.claude` → WSL's `~/.claude` — same config directory
+2. **Bind mount** the WSL memory folder onto the Windows hash folder — same memory files
+
+---
+
+## Prerequisites
+
+- Windows 11 with WSL2
+- Claude Code installed on both Windows (desktop app) and WSL (CLI)
+- Admin PowerShell access (for the symlink)
+- Your WSL username and Windows username — run `whoami` in each to confirm (they may differ)
+
+---
+
+## Setup
+
+### Step 1 — Find your project name
+
+The `<project-name>` is derived from the WSL path of your project. Run this in WSL to find it:
+
+```bash
+ls ~/.claude/projects/
+```
+
+Look for a folder starting with `-home-<wsluser>-`. Everything after `-home-<wsluser>-` is your project name. For example:
+
+```
+-home-normani-Claude-home-ai-infra   →  project name is  Claude-home-ai-infra
+-home-normani-myapp                  →  project name is  myapp
+```
+
+> **Tip:** If you haven't opened the project in WSL CLI yet, do that first — it creates the memory directory.
+
+### Step 2 — Run the WSL setup script
+
+Clone this repo and run the script from your WSL terminal:
+
+```bash
+git clone https://github.com/norman-ingal/claude-code-wsl-memory.git
+cd claude-code-wsl-memory
+bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
+```
+
+Examples:
+
+```bash
+# Ubuntu 24.04 (default)
+bash setup.sh normani normani Claude-home-ai-infra
+
+# Different distro — must exactly match output of `wsl --list`
+bash setup.sh normani normani Claude-home-ai-infra Ubuntu-22.04
+```
+
+This will:
+- Create the Windows project hash directory in WSL
+- Bind mount the WSL memory folder onto it
+- Add the mount to `/etc/fstab` so it persists across WSL restarts
+
+**Repeat for each project you want to share.**
+
+### Step 3 — Symlink Windows `.claude` to WSL (Admin PowerShell)
+
+Open PowerShell as Administrator and run:
+
+```powershell
+# Back up existing Windows Claude config
+Rename-Item "C:\Users\<winuser>\.claude" "C:\Users\<winuser>\.claude.bak"
+
+# Symlink it to WSL
+New-Item -ItemType SymbolicLink `
+  -Path "C:\Users\<winuser>\.claude" `
+  -Target "\\wsl.localhost\Ubuntu-24.04\home\<wsluser>\.claude"
+```
+
+Replace `Ubuntu-24.04` with your actual distro name if different.
+
+### Step 4 — Verify it works
+
+1. Restart the Windows Claude Code app
+2. Open your project in the **Windows app** and tell Claude something to remember:
+   ```
+   Please remember that I prefer TypeScript over JavaScript for this project.
+   ```
+3. Open the same project in **WSL CLI** and ask:
+   ```
+   What do you remember about this project?
+   ```
+
+If it recalls what you told the Windows app, memory sharing is working.
+
+---
+
+## If Memory Stops Working After WSL Restart
+
+The bind mount may not have reapplied. Run in WSL:
+
+```bash
+sudo mount -a
+```
+
+To check if the mount is active:
+
+```bash
+findmnt ~/.claude/projects/--wsl-localhost-Ubuntu-24-04-home-<wsluser>-<project>
+```
+
+---
+
+## Tips for a Seamless Experience
+
+### Add a `CLAUDE.md` to each project
+
+Claude Code reads `CLAUDE.md` at the start of every session. Use it to encode project-specific instructions that apply to both instances — including the git workarounds below. This means you never have to re-explain context, and both Windows and WSL sessions behave consistently.
+
+Example `CLAUDE.md` additions:
+
+```markdown
+## Git operations
+
+# Push must run inside WSL (SSH agent lives there):
+wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git push"
+
+# Pull at session start:
+wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git pull"
+```
+
+### Use `CURRENT_WORK.md` as a session handoff
+
+Create a `CURRENT_WORK.md` in your repo and instruct Claude to update it at the end of every session. It becomes a machine-readable handoff note — any session, on any machine, starts with full context.
+
+---
 
 ## Known Issues
 
 ### Git push hangs when Claude runs commands from Windows
 
-When the Windows Claude Code app runs shell commands against a repo at a `//wsl.localhost/` path, it uses a Windows-side bash environment that cannot reach WSL's SSH agent. Any git operation that requires SSH auth (`git push`, `git fetch`, `git pull` with an SSH remote) will hang indefinitely.
+When the Windows Claude Code app runs shell commands against a repo at a `//wsl.localhost/` path, it uses a Windows-side bash environment that **cannot reach WSL's SSH agent**. Any git operation requiring SSH auth (`git push`, `git fetch`, `git pull` over SSH) hangs indefinitely.
 
-**Fix:** Tell Claude to run git push via WSL explicitly:
+**Fix — run git push inside WSL:**
 
 ```bash
 wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git push"
 ```
 
-Or add this to your project's `CLAUDE.md` so Claude knows to do it automatically:
-
-```markdown
-For git push, always use:
-wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git push"
-```
+Add this pattern to your `CLAUDE.md` so Claude handles it automatically every session.
 
 ### Git "dubious ownership" error
 
-Git may refuse to run in repos accessed via `//wsl.localhost/` paths due to a filesystem ownership mismatch. Fix with:
+Git may refuse to run in repos accessed via `//wsl.localhost/` paths due to a filesystem ownership mismatch between Windows and WSL.
+
+**Fix:**
 
 ```bash
 git config --global --add safe.directory '%(prefix)///wsl.localhost/Ubuntu-24.04/home/<wsluser>/<repo>'
 ```
 
-Or run all git commands inside WSL to avoid the issue entirely.
+Or route all git commands through WSL (recommended — avoids the issue entirely).
+
+### Git identity not set on Windows sessions
+
+Git commits from Windows-side bash may fail with "Author identity unknown" if `user.name` and `user.email` aren't set in the repo's local config.
+
+**Fix — set per repo:**
+
+```bash
+wsl -d Ubuntu-24.04 -- bash -c "
+  cd /home/<wsluser>/<repo>
+  git config user.name 'Your Name'
+  git config user.email 'your@email.com'
+"
+```
+
+Or add it to your bootstrap/setup script so it's set automatically on every new clone.
+
+---
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the dependency update policy and secrets rules.
