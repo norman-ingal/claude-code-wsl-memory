@@ -64,8 +64,8 @@ ls ~/.claude/projects/
 Look for a folder starting with `-home-<wsluser>-`. Everything after `-home-<wsluser>-` is your project name. For example:
 
 ```
--home-normani-Claude-home-ai-infra   →  project name is  Claude-home-ai-infra
--home-normani-myapp                  →  project name is  myapp
+-home-alice-my-project   →  project name is  my-project
+-home-alice-myapp        →  project name is  myapp
 ```
 
 > **Tip:** If you haven't opened the project in WSL CLI yet, do that first — it creates the memory directory.
@@ -84,10 +84,10 @@ Examples:
 
 ```bash
 # Ubuntu 24.04 (default)
-bash setup.sh normani normani Claude-home-ai-infra
+bash setup.sh alice alice my-project
 
 # Different distro — must exactly match output of `wsl --list`
-bash setup.sh normani normani Claude-home-ai-infra Ubuntu-22.04
+bash setup.sh alice alice my-project Ubuntu-22.04
 ```
 
 This will:
