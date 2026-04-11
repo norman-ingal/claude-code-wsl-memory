@@ -104,10 +104,14 @@ This will:
 
 ### Step 3 — Symlink Windows `.claude` to WSL (Admin PowerShell)
 
+> **Note:** This symlink shares the entire `.claude` directory — not just memory, but also `settings.json` and MCP config. Changes made in one instance will be visible in the other. This is usually what you want.
+
+> **Existing Windows memories:** The backup step below moves your old `.claude` out of the way. If you've used the Windows Claude app before and want to keep that memory, copy the relevant project folders from `C:\Users\<winuser>\.claude.bak\projects\` into `~/.claude/projects/` in WSL before restarting the Windows app.
+
 Open PowerShell as Administrator and run:
 
 ```powershell
-# Back up existing Windows Claude config
+# Back up existing Windows Claude config (move it, don't delete)
 Rename-Item "C:\Users\<winuser>\.claude" "C:\Users\<winuser>\.claude.bak"
 
 # Symlink it to WSL
