@@ -1,5 +1,7 @@
 # Claude Code Shared Memory — Windows + WSL
 
+**TL;DR:** Claude Code on Windows and Claude Code in WSL store memory in different places and never share context. This repo fixes that with a symlink + bind mount so both instances read and write the same memory files.
+
 > **Who this is for:** Developers using Claude Code on **Windows** who also run Claude Code inside **WSL** (Ubuntu or any distro) — and want both instances to share the same memory and context.
 >
 > **macOS / Linux users:** You don't have this problem. Claude Code runs natively and memory is stored in one place.
@@ -140,7 +142,7 @@ If it recalls what you told the Windows app, memory sharing is working.
 
 ## If Memory Stops Working After WSL Restart
 
-The bind mount may not have reapplied. Run in WSL:
+WSL doesn't run a traditional init, so `/etc/fstab` bind mounts don't reapply automatically on every restart. Re-apply manually:
 
 ```bash
 sudo mount -a
@@ -150,6 +152,23 @@ To check if the mount is active:
 
 ```bash
 findmnt ~/.claude/projects/--wsl-localhost-Ubuntu-24-04-home-<wsluser>-<project>
+```
+
+### Automate it — never think about this again
+
+Add `sudo mount -a` to your WSL startup so it runs automatically every time WSL starts:
+
+```bash
+# Add to ~/.bashrc (runs on every new terminal)
+echo 'sudo mount -a 2>/dev/null' >> ~/.bashrc
+```
+
+To make this passwordless (so it doesn't prompt every terminal), add a sudoers exception:
+
+```bash
+sudo visudo
+# Add this line (replace <wsluser> with your WSL username):
+<wsluser> ALL=(ALL) NOPASSWD: /bin/mount
 ```
 
 ---
@@ -219,6 +238,32 @@ wsl -d Ubuntu-24.04 -- bash -c "
 ```
 
 Or add it to your bootstrap/setup script so it's set automatically on every new clone.
+
+---
+
+## Uninstall
+
+To revert everything:
+
+**1. Remove the bind mount and fstab entry (WSL):**
+```bash
+# Unmount
+sudo umount ~/.claude/projects/--wsl-localhost-<distro-slug>-home-<wsluser>-<project>
+
+# Remove the fstab entry
+sudo nano /etc/fstab  # delete the line added by setup.sh
+```
+
+**2. Remove the Windows symlink and restore backup (Admin PowerShell):**
+```powershell
+Remove-Item "C:\Users\<winuser>\.claude"
+Rename-Item "C:\Users\<winuser>\.claude.bak" "C:\Users\<winuser>\.claude"
+```
+
+**3. Remove the sudoers entry (if added):**
+```bash
+sudo visudo  # remove the NOPASSWD mount line
+```
 
 ---
 

@@ -4,7 +4,7 @@
 # Example: bash setup.sh wsluser winuser MyProject
 # Example: bash setup.sh wsluser winuser MyProject Ubuntu-22.04
 
-set -e
+set -eo pipefail
 
 WSL_USER="${1}"
 WIN_USER="${2}"
@@ -15,6 +15,13 @@ if [[ -z "$WSL_USER" || -z "$WIN_USER" || -z "$PROJECT" ]]; then
   echo "Usage: bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]"
   echo "Example: bash setup.sh wsluser winuser MyProject"
   echo "Example: bash setup.sh wsluser winuser MyProject Ubuntu-22.04"
+  exit 1
+fi
+
+# Validate project name — spaces and slashes break the hash
+if [[ "$PROJECT" =~ [[:space:]/] ]]; then
+  echo "Error: project name must not contain spaces or slashes: '$PROJECT'"
+  echo "Use the folder name as it appears under ~/.claude/projects/ (e.g. Claude-home-ai-infra)"
   exit 1
 fi
 
