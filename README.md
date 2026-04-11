@@ -47,7 +47,9 @@ Two steps:
 - Windows 11 with WSL2
 - Claude Code installed on both Windows (desktop app) and WSL (CLI)
 - Admin PowerShell access (for the symlink)
-- Your WSL username and Windows username — run `whoami` in each to confirm (they may differ)
+- Your WSL username and Windows username — these are **often different**. Run `whoami` in each to confirm:
+  - In WSL terminal: `whoami` → e.g. `alice`
+  - In Windows PowerShell: `whoami` → e.g. `DESKTOP-ABC\bob` (use only the part after `\`)
 
 ---
 
@@ -83,11 +85,14 @@ bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
 Examples:
 
 ```bash
-# Ubuntu 24.04 (default)
-bash setup.sh alice alice my-project
+# WSL user = alice, Windows user = bob, Ubuntu 24.04 (default)
+bash setup.sh alice bob my-project
 
 # Different distro — must exactly match output of `wsl --list`
-bash setup.sh alice alice my-project Ubuntu-22.04
+bash setup.sh alice bob my-project Ubuntu-22.04
+
+# Same username on both (less common, but valid)
+bash setup.sh alice alice my-project
 ```
 
 This will:
@@ -111,7 +116,7 @@ New-Item -ItemType SymbolicLink `
   -Target "\\wsl.localhost\Ubuntu-24.04\home\<wsluser>\.claude"
 ```
 
-Replace `Ubuntu-24.04` with your actual distro name if different.
+Replace `<winuser>` with your **Windows** username, `<wsluser>` with your **WSL** username, and `Ubuntu-24.04` with your distro name if different. These usernames are often not the same.
 
 ### Step 4 — Verify it works
 
