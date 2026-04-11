@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # PRs are for awareness only — never auto-merge.
+  # See SECURITY.md for the full update policy.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
