@@ -2,6 +2,8 @@
 
 **TL;DR:** Claude Code on Windows and Claude Code in WSL store memory in different places and never share context. This repo fixes that with a symlink + bind mount so both instances read and write the same memory files.
 
+> **This is a workaround**, not an official solution. It relies on reverse-engineered project hash behavior that Anthropic could change without notice. If Claude Code ever adds a native memory path config option, use that instead. Track the upstream discussion at [anthropics/claude-code](https://github.com/anthropics/claude-code/issues).
+
 > **Who this is for:** Developers using Claude Code on **Windows** who also run Claude Code inside **WSL** (Ubuntu or any distro) — and want both instances to share the same memory and context.
 >
 > **macOS / Linux users:** You don't have this problem. Claude Code runs natively and memory is stored in one place.
@@ -137,6 +139,16 @@ Replace `<winuser>` with your **Windows** username, `<wsluser>` with your **WSL*
    ```
 
 If it recalls what you told the Windows app, memory sharing is working.
+
+You can also run the verify command at any time to check all components:
+
+```bash
+bash setup.sh verify <wsl-user> <project-name> [distro-name]
+# e.g.
+bash setup.sh verify alice my-project
+```
+
+This checks that the WSL memory directory exists, the Windows hash directory exists, the bind mount is active, and the fstab entry is present. Run it after any Claude Code update to confirm nothing broke.
 
 ---
 
