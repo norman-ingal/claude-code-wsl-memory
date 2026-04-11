@@ -1,22 +1,28 @@
 #!/bin/bash
 # Claude Code Shared Memory Setup — WSL side
-# Usage: bash setup.sh <wsl-user> <windows-user> <project-name>
+# Usage: bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
 # Example: bash setup.sh wsluser winuser MyProject
+# Example: bash setup.sh wsluser winuser MyProject Ubuntu-22.04
 
 set -e
 
 WSL_USER="${1}"
 WIN_USER="${2}"
 PROJECT="${3}"
+DISTRO="${4:-Ubuntu-24.04}"
 
 if [[ -z "$WSL_USER" || -z "$WIN_USER" || -z "$PROJECT" ]]; then
-  echo "Usage: bash setup.sh <wsl-user> <windows-user> <project-name>"
+  echo "Usage: bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]"
   echo "Example: bash setup.sh wsluser winuser MyProject"
+  echo "Example: bash setup.sh wsluser winuser MyProject Ubuntu-22.04"
   exit 1
 fi
 
+# Sanitize distro name for use in hash (replace spaces with hyphens, lowercase)
+DISTRO_SLUG=$(echo "$DISTRO" | tr ' ' '-')
+
 WSL_HASH="-home-${WSL_USER}-${PROJECT}"
-WIN_HASH="--wsl-localhost-Ubuntu-24-04-home-${WSL_USER}-${PROJECT}"
+WIN_HASH="--wsl-localhost-${DISTRO_SLUG}-home-${WSL_USER}-${PROJECT}"
 
 WSL_MEMORY="/home/${WSL_USER}/.claude/projects/${WSL_HASH}/memory"
 WIN_MEMORY="/home/${WSL_USER}/.claude/projects/${WIN_HASH}/memory"

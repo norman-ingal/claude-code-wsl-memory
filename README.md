@@ -22,7 +22,7 @@ Two steps:
 
 ## Prerequisites
 
-- Windows 11 with WSL2 (Ubuntu 24.04)
+- Windows 11 with WSL2 (Ubuntu 24.04 or any distro)
 - Claude Code installed on both Windows and WSL
 - Admin PowerShell access
 - Your WSL username and Windows username (may differ)
@@ -34,14 +34,22 @@ Two steps:
 In your WSL terminal:
 
 ```bash
-bash setup.sh <wsl-user> <windows-user> <project-name>
+bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
 ```
 
-Example:
+Example (Ubuntu 24.04, the default):
 
 ```bash
 bash setup.sh wsluser winuser MyProject
 ```
+
+Example (different distro):
+
+```bash
+bash setup.sh wsluser winuser MyProject Ubuntu-22.04
+```
+
+The distro name must exactly match what appears in `wsl --list` — it determines the Windows project hash. Defaults to `Ubuntu-24.04` if omitted.
 
 This will:
 - Create the Windows project hash directory in WSL
@@ -88,3 +96,32 @@ Windows Claude Code
 ```
 
 Both project hashes point to the same memory files. Writes from either app are immediately visible to the other.
+
+## Known Issues
+
+### Git push hangs when Claude runs commands from Windows
+
+When the Windows Claude Code app runs shell commands against a repo at a `//wsl.localhost/` path, it uses a Windows-side bash environment that cannot reach WSL's SSH agent. Any git operation that requires SSH auth (`git push`, `git fetch`, `git pull` with an SSH remote) will hang indefinitely.
+
+**Fix:** Tell Claude to run git push via WSL explicitly:
+
+```bash
+wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git push"
+```
+
+Or add this to your project's `CLAUDE.md` so Claude knows to do it automatically:
+
+```markdown
+For git push, always use:
+wsl -d Ubuntu-24.04 -- bash -c "cd /home/<wsluser>/<repo> && git push"
+```
+
+### Git "dubious ownership" error
+
+Git may refuse to run in repos accessed via `//wsl.localhost/` paths due to a filesystem ownership mismatch. Fix with:
+
+```bash
+git config --global --add safe.directory '%(prefix)///wsl.localhost/Ubuntu-24.04/home/<wsluser>/<repo>'
+```
+
+Or run all git commands inside WSL to avoid the issue entirely.
