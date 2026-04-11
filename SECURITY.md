@@ -26,7 +26,6 @@ Dependabot PRs are for awareness only — **never auto-merge**.
 - All secrets in `.env` files — never committed
 - No hardcoded tokens, passwords, or API keys anywhere in the codebase
 - Rotate any key that is accidentally committed immediately
-- Use NordPass as the canonical secrets store
 
 ## Reporting a Vulnerability
 

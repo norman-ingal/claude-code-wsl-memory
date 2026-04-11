@@ -18,8 +18,10 @@ if [[ -z "$WSL_USER" || -z "$WIN_USER" || -z "$PROJECT" ]]; then
   exit 1
 fi
 
-# Sanitize distro name for use in hash (replace spaces with hyphens, lowercase)
-DISTRO_SLUG=$(echo "$DISTRO" | tr ' ' '-')
+# Sanitize distro name for use in hash (replace spaces and dots with hyphens)
+# Claude Code replaces both when deriving the project hash from the WSL path.
+# e.g. "Ubuntu-24.04" → "Ubuntu-24-04"
+DISTRO_SLUG=$(echo "$DISTRO" | tr ' .' '-')
 
 WSL_HASH="-home-${WSL_USER}-${PROJECT}"
 WIN_HASH="--wsl-localhost-${DISTRO_SLUG}-home-${WSL_USER}-${PROJECT}"
@@ -42,9 +44,13 @@ fi
 echo "Creating Windows project directory..."
 mkdir -p "${WIN_MEMORY}"
 
-# Bind mount
-echo "Bind mounting memory directory..."
-sudo mount --bind "${WSL_MEMORY}" "${WIN_MEMORY}"
+# Bind mount (skip if already mounted — idempotent)
+if findmnt -n "${WIN_MEMORY}" > /dev/null 2>&1; then
+  echo "Already mounted — skipping bind mount."
+else
+  echo "Bind mounting memory directory..."
+  sudo mount --bind "${WSL_MEMORY}" "${WIN_MEMORY}"
+fi
 
 # Persist via fstab
 FSTAB_ENTRY="${WSL_MEMORY} ${WIN_MEMORY} none bind 0 0"
