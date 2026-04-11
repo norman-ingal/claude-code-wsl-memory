@@ -83,21 +83,20 @@ Clone this repo and run the script from your WSL terminal:
 ```bash
 git clone https://github.com/norman-ingal/claude-code-wsl-memory.git
 cd claude-code-wsl-memory
-bash setup.sh <wsl-user> <windows-user> <project-name> [distro-name]
+bash setup.sh install <wsl-user> <project-name> [distro-name]
 ```
 
 Examples:
 
 ```bash
-# WSL user = alice, Windows user = bob, Ubuntu 24.04 (default)
-bash setup.sh alice bob my-project
+# Ubuntu 24.04 (default)
+bash setup.sh install alice my-project
 
 # Different distro — must exactly match output of `wsl --list`
-bash setup.sh alice bob my-project Ubuntu-22.04
-
-# Same username on both (less common, but valid)
-bash setup.sh alice alice my-project
+bash setup.sh install alice my-project Ubuntu-22.04
 ```
+
+> **Note:** The script only needs your **WSL** username — not your Windows username. Your Windows username only appears in the PowerShell step below.
 
 This will:
 - Create the Windows project hash directory in WSL
@@ -143,8 +142,6 @@ If it recalls what you told the Windows app, memory sharing is working.
 You can also run the verify command at any time to check all components:
 
 ```bash
-bash setup.sh verify <wsl-user> <project-name> [distro-name]
-# e.g.
 bash setup.sh verify alice my-project
 ```
 
@@ -255,15 +252,9 @@ Or add it to your bootstrap/setup script so it's set automatically on every new 
 
 ## Uninstall
 
-To revert everything:
-
 **1. Remove the bind mount and fstab entry (WSL):**
 ```bash
-# Unmount
-sudo umount ~/.claude/projects/--wsl-localhost-<distro-slug>-home-<wsluser>-<project>
-
-# Remove the fstab entry
-sudo nano /etc/fstab  # delete the line added by setup.sh
+bash setup.sh uninstall alice my-project
 ```
 
 **2. Remove the Windows symlink and restore backup (Admin PowerShell):**
